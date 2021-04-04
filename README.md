@@ -24,3 +24,24 @@ pip install -r requirement.txt
    ```
 
 2. 将生成好的数据集，根据 `dataset`文件夹中的结构放入即可
+
+
+
+## 三、训练
+1. 修改 `train.py` 里面的参数，执行下面进行训练
+```
+python train.py
+```
+
+## 四、测试
+1. 修改 `test.py` 里面的参数，执行下面进行测试
+```
+python test.py --checkpoint 权重路径 
+```
+
+
+## 五、推理
+1. 修改 `predict.py` 里面的参数，执行下面进行推理
+```
+python predict.py
+```

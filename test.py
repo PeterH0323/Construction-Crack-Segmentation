@@ -19,7 +19,7 @@ def parse_args():
     parser.add_argument('--num_workers', type=int, default=1, help="the number of parallel threads")
     parser.add_argument('--batch_size', type=int, default=1,
                         help=" the batch_size is set to 1 when evaluating or testing")
-    parser.add_argument('--checkpoint', type=str, default=r"E:\AI_Project\Efficient-Segmentation-Networks\checkpoint\custom_dataset\ENetbs4gpu1_train\model_136.pth",
+    parser.add_argument('--checkpoint', type=str, default=r"",
                         help="use the file to load the checkpoint for evaluating or testing ")
     parser.add_argument('--save_seg_dir', type=str, default="./result/",
                         help="saving path of prediction result")
