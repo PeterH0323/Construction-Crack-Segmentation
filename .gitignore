@@ -9,3 +9,4 @@ server/
 checkpoint/
 dataset/custom_dataset/*/*/*.jpg
 dataset/custom_dataset/*/*/*.png
+dataset/inform/custom_dataset_inform.pkl
