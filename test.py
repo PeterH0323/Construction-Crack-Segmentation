@@ -21,7 +21,7 @@ def parse_args():
                         help=" the batch_size is set to 1 when evaluating or testing")
     parser.add_argument('--checkpoint', type=str, default=r"",
                         help="use the file to load the checkpoint for evaluating or testing ")
-    parser.add_argument('--save_seg_dir', type=str, default="./result/",
+    parser.add_argument('--save_seg_dir', type=str, default="./predict_result/",
                         help="saving path of prediction result")
     parser.add_argument('--best', action='store_true', help="Get the best result among last few checkpoints")
     parser.add_argument('--save',  default=True, action='store_true', help="Save the predicted image")

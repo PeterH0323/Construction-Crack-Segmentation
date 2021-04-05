@@ -22,7 +22,7 @@ def parse_args():
                         help=" the batch_size is set to 1 when evaluating or testing")
     parser.add_argument('--checkpoint', type=str,default="",
                         help="use the file to load the checkpoint for evaluating or testing ")
-    parser.add_argument('--save_seg_dir', type=str, default="./server/",
+    parser.add_argument('--save_seg_dir', type=str, default="./predict_result/",
                         help="saving path of prediction result")
     parser.add_argument('--cuda', default=True, help="run on CPU or GPU")
     parser.add_argument("--gpus", default="0", type=str, help="gpu ids (default: 0)")
