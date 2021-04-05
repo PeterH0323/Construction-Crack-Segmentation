@@ -9,6 +9,7 @@ from builders.model_builder import build_model
 from builders.dataset_builder import build_dataset_test
 from utils.utils import save_predict
 from utils.convert_state import convert_state_dict
+import cv2
 
 
 def parse_args():
@@ -57,6 +58,18 @@ def predict(args, test_loader, model):
         name[0] = name[0].rsplit('_', 1)[0] + '_predict'
         save_predict(output, None, name[0], args.dataset, args.save_seg_dir,
                      output_grey=True, output_color=True, gt_color=False)
+
+        # 将推理出来的 mask 写到原图中并保存成新的图片
+        img = cv2.imread(rf".\dataset\custom_dataset\Images\test\{name[0].split('_predict')[0]}.jpg")  # 原图路径
+        mask = output
+
+        contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        cv2.drawContours(img, contours, -1, (0, 0, 255), 1)
+
+        img = img[:, :, ::-1]
+        img[..., 2] = np.where(mask == 1, 255, img[..., 2])
+
+        cv2.imwrite(f"{os.path.join(args.save_seg_dir, name[0] + '_img.png')}", img)
 
 
 def test_model(args):
