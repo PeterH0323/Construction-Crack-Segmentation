@@ -56,7 +56,7 @@ def predict(args, test_loader, model):
         # Modify image name to meet official requirement
         name[0] = name[0].rsplit('_', 1)[0] + '_predict'
         save_predict(output, None, name[0], args.dataset, args.save_seg_dir,
-                     output_grey=True, output_color=False, gt_color=False)
+                     output_grey=True, output_color=True, gt_color=False)
 
 
 def test_model(args):
