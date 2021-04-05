@@ -15,7 +15,7 @@ def parse_args():
     parser = ArgumentParser(description='Efficient semantic segmentation')
     # model and dataset
     parser.add_argument('--model', default="ENet", help="model name: (default ENet)")
-    parser.add_argument('--dataset', default="camvid", help="dataset: cityscapes or camvid")
+    parser.add_argument('--dataset', default="custom_dataset", help="dataset: cityscapes or camvid")
     parser.add_argument('--num_workers', type=int, default=2, help="the number of parallel threads")
     parser.add_argument('--batch_size', type=int, default=1,
                         help=" the batch_size is set to 1 when evaluating or testing")
@@ -28,7 +28,6 @@ def parse_args():
     args = parser.parse_args()
 
     return args
-
 
 
 def predict(args, test_loader, model):
@@ -55,7 +54,7 @@ def predict(args, test_loader, model):
 
         # Save the predict greyscale output for Cityscapes official evaluation
         # Modify image name to meet official requirement
-        name[0] = name[0].rsplit('_', 1)[0] + '*'
+        name[0] = name[0].rsplit('_', 1)[0] + '_predict'
         save_predict(output, None, name[0], args.dataset, args.save_seg_dir,
                      output_grey=True, output_color=False, gt_color=False)
 
@@ -112,6 +111,8 @@ if __name__ == '__main__':
         args.classes = 19
     elif args.dataset == 'camvid':
         args.classes = 11
+    elif args.dataset == 'custom_dataset':
+        args.classes = 2
     else:
         raise NotImplementedError(
             "This repository now supports two datasets: cityscapes and camvid, %s is not included" % args.dataset)
