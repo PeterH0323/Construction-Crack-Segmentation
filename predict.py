@@ -51,7 +51,7 @@ def predict(args, test_loader, model):
         output = model(input_var)
         torch.cuda.synchronize()
         time_taken = time.time() - start_time
-        print('[%d/%d]  time: %.2f' % (i + 1, total_batches, time_taken))
+        print(f'[{i + 1}/{total_batches}]  time: {time_taken * 1000:.4f} ms = {1 / time_taken:.1f} FPS')
         output = output.cpu().data[0].numpy()
         output = output.transpose(1, 2, 0)
         output = np.asarray(np.argmax(output, axis=2), dtype=np.uint8)
