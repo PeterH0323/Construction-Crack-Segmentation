@@ -72,10 +72,10 @@ def predict(args, test_loader, model):
         # 将结果和原图画到一起
         img = img_original
         mask = output
-        contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        cv2.drawContours(img, contours, -1, (0, 0, 255), 1)
-        img = img[:, :, ::-1]
-        img[..., 2] = np.where(mask == 1, 255, img[..., 2])
+        mask[mask == 1] = 255  # 将 mask 的 1 变成 255 --> 用于后面显示充当红色通道
+        zeros = np.zeros(mask.shape[:2], dtype="uint8")  # 生成 全为0 的矩阵，用于充当 蓝色 和 绿色通道
+        mask_final = cv2.merge([zeros, zeros, mask])  # 合并成 3 通道
+        img = cv2.addWeighted(img, 1, mask_final, 1, 0)  # 合并
 
         if mode == 'images':
             # 保存 推理+原图 结果

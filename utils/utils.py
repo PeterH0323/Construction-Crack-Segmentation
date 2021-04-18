@@ -4,7 +4,7 @@ import numpy as np
 from PIL import Image
 import torch
 import torch.nn as nn
-from utils.colorize_mask import cityscapes_colorize_mask, camvid_colorize_mask
+from utils.colorize_mask import cityscapes_colorize_mask, camvid_colorize_mask, custom_colorize_mask
 
 
 def __init_weight(feature, conv_init, norm_layer, bn_eps, bn_momentum,
@@ -39,25 +39,36 @@ def setup_seed(seed):
 
 
 def save_predict(output, gt, img_name, dataset, save_path, output_grey=False, output_color=True, gt_color=False):
+    output_grey_path = os.path.join(save_path, img_name + '.png')
     if output_grey:
         output_grey = Image.fromarray(output)
-        output_grey.save(os.path.join(save_path, img_name + '.png'))
+        output_grey.save(output_grey_path)
 
+    output_color_path = os.path.join(save_path, img_name + '_color.png')
     if output_color:
-        if dataset == 'cityscapes' or dataset == 'custom_dataset':
+
+        if dataset == 'cityscapes':
             output_color = cityscapes_colorize_mask(output)
+        elif dataset == 'custom_dataset':
+            output_color = custom_colorize_mask(output)
         elif dataset == 'camvid':
             output_color = camvid_colorize_mask(output)
 
-        output_color.save(os.path.join(save_path, img_name + '_color.png'))
+        output_color.save(output_color_path)
 
+    gt_color_path = os.path.join(save_path, img_name + '_gt.png')
     if gt_color:
-        if dataset == 'cityscapes' or dataset == 'custom_dataset':
+
+        if dataset == 'cityscapes':
             gt_color = cityscapes_colorize_mask(gt)
+        elif dataset == 'custom_dataset':
+            gt_color = custom_colorize_mask(gt)
         elif dataset == 'camvid':
             gt_color = camvid_colorize_mask(gt)
 
-        gt_color.save(os.path.join(save_path, img_name + '_gt.png'))
+        gt_color.save(gt_color_path)
+
+    return output_grey_path, output_color_path, gt_color_path
 
 
 def netParams(model):
