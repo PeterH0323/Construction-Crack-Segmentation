@@ -376,7 +376,7 @@ class LoadImages:  # for inference
         # Convert
         img = img[:, :, ::-1].transpose(2, 0, 1)  # BGR to RGB, to 3x416x416
 
-        return img.copy(), np.array(size), path, self.mode, self.frame, img0
+        return img.copy(), np.array(size), path, self.mode, self.frame, img0, self.cap
 
     def new_video(self, path):
         self.frame = 0

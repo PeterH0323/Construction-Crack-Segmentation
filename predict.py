@@ -46,7 +46,10 @@ def predict(args, test_loader, model):
     # evaluation or test mode
     model.eval()
     total_batches = len(test_loader)
-    for i, (input, size, name, mode, frame_count, img_original) in enumerate(test_loader):
+    vid_writer = None
+    vid_path = None
+
+    for i, (input, size, name, mode, frame_count, img_original, vid_cap) in enumerate(test_loader):
         with torch.no_grad():
             input = input[None, ...]  # 增加多一个维度
             input = torch.tensor(input)  # [1, 3, 224, 224]
@@ -66,9 +69,10 @@ def predict(args, test_loader, model):
         # save_predict(output, None, name[0], args.dataset, args.save_seg_dir,
         #              output_grey=True, output_color=True, gt_color=False)
 
-        save_name = Path(name).stem + f'_predict_{frame_count}'
-        save_predict(output, None, save_name, args.dataset, args.save_seg_dir,
-                     output_grey=True, output_color=True, gt_color=False)
+        save_name = Path(name).stem + f'_predict'
+        if mode == 'images':
+            save_predict(output, None, save_name, args.dataset, args.save_seg_dir,
+                         output_grey=True, output_color=True, gt_color=False)
 
         # 将推理出来的 mask 写到原图中并保存成新的图片
         # original_file = os.path.join(args.image_input_path, f"{name[0].split('_predict')[0]}.jpg")
@@ -90,7 +94,22 @@ def predict(args, test_loader, model):
         img[..., 2] = np.where(mask == 1, 255, img[..., 2])
 
         # cv2.imwrite(f"{os.path.join(args.save_seg_dir, name[0] + '_img.png')}", img)
-        cv2.imwrite(f"{os.path.join(args.save_seg_dir, save_name + '_img.png')}", img)
+
+        if mode == 'images':
+            cv2.imwrite(f"{os.path.join(args.save_seg_dir, save_name + '_img.png')}", img)
+        else:
+            save_path = os.path.join(args.save_seg_dir, save_name + '_predict.mp4')
+            if vid_path != save_path:  # new video
+                vid_path = save_path
+                if isinstance(vid_writer, cv2.VideoWriter):
+                    vid_writer.release()  # release previous video writer
+
+                fourcc = 'mp4v'  # output video codec
+                fps = vid_cap.get(cv2.CAP_PROP_FPS)
+                w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                vid_writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*fourcc), fps, (w, h))
+            vid_writer.write(img)
 
 
 def predict_model(args):
