@@ -12,3 +12,4 @@ dataset/custom_dataset/*/*/*.png
 dataset/inform/custom_dataset_inform.pkl
 inference_images/*/*.jpg
 inference_images/*/*/*/*/*.png
+*.mp4
