@@ -63,41 +63,25 @@ def predict(args, test_loader, model):
         output = output.transpose(1, 2, 0)
         output = np.asarray(np.argmax(output, axis=2), dtype=np.uint8)
 
-        # Save the predict greyscale output for Cityscapes official evaluation
-        # Modify image name to meet official requirement
-        # name[0] = name[0].rsplit('_', 1)[0] + '_predict'
-        # save_predict(output, None, name[0], args.dataset, args.save_seg_dir,
-        #              output_grey=True, output_color=True, gt_color=False)
-
         save_name = Path(name).stem + f'_predict'
         if mode == 'images':
+            # 保存图片推理结果
             save_predict(output, None, save_name, args.dataset, args.save_seg_dir,
                          output_grey=True, output_color=True, gt_color=False)
 
-        # 将推理出来的 mask 写到原图中并保存成新的图片
-        # original_file = os.path.join(args.image_input_path, f"{name[0].split('_predict')[0]}.jpg")
-        # if not os.path.exists(original_file):
-        #     original_file = original_file.replace(".jpg", ".png")
-        #     if not os.path.exists(original_file):
-        #         FileNotFoundError(
-        #             f"{name[0].split('_predict')[0]}.jpg or {name[0].split('_predict')[0]}.png is not found !")
-
-        # img = cv2.imread(original_file)  # 原图路径
-        # if mode == "images":
-        img = img_original  # 原图
+        # 将结果和原图画到一起
+        img = img_original
         mask = output
-
         contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         cv2.drawContours(img, contours, -1, (0, 0, 255), 1)
-
         img = img[:, :, ::-1]
         img[..., 2] = np.where(mask == 1, 255, img[..., 2])
 
-        # cv2.imwrite(f"{os.path.join(args.save_seg_dir, name[0] + '_img.png')}", img)
-
         if mode == 'images':
+            # 保存 推理+原图 结果
             cv2.imwrite(f"{os.path.join(args.save_seg_dir, save_name + '_img.png')}", img)
         else:
+            # 保存视频
             save_path = os.path.join(args.save_seg_dir, save_name + '_predict.mp4')
             if vid_path != save_path:  # new video
                 vid_path = save_path
