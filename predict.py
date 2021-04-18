@@ -82,7 +82,7 @@ def predict(args, test_loader, model):
         cv2.imwrite(f"{os.path.join(args.save_seg_dir, name[0] + '_img.png')}", img)
 
 
-def test_model(args):
+def predict_model(args):
     """
      main function for testing
      param args: global arguments
@@ -103,15 +103,6 @@ def test_model(args):
         model = model.cuda()  # using GPU for inference
         cudnn.benchmark = True
 
-    if not os.path.exists(args.save_seg_dir):
-        os.makedirs(args.save_seg_dir)
-
-    # load the test set
-    if args.use_txt_list:
-        datas, testLoader = build_dataset_test(args.dataset, args.num_workers, none_gt=True)
-    else:
-        datas, testLoader = build_dataset_predict(args.image_input_path, args.dataset, args.num_workers, none_gt=True)
-
     if args.checkpoint:
         if os.path.isfile(args.checkpoint):
             print("=====> loading checkpoint '{}'".format(args.checkpoint))
@@ -121,6 +112,15 @@ def test_model(args):
         else:
             print("=====> no checkpoint found at '{}'".format(args.checkpoint))
             raise FileNotFoundError("no checkpoint found at '{}'".format(args.checkpoint))
+
+    if not os.path.exists(args.save_seg_dir):
+        os.makedirs(args.save_seg_dir)
+
+    # load the test set
+    if args.use_txt_list:
+        _, testLoader = build_dataset_test(args.dataset, args.num_workers, none_gt=True)
+    else:
+        _, testLoader = build_dataset_predict(args.image_input_path, args.dataset, args.num_workers, none_gt=True)
 
     print("=====> beginning testing")
     print("test set length: ", len(testLoader))
@@ -143,4 +143,4 @@ if __name__ == '__main__':
         raise NotImplementedError(
             "This repository now supports two datasets: cityscapes and camvid, %s is not included" % args.dataset)
 
-    test_model(args)
+    predict_model(args)

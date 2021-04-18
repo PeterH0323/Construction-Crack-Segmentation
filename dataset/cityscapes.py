@@ -233,7 +233,8 @@ class CustomPredictDataSet(data.Dataset):
         self.list_path = list_path
         self.ignore_label = ignore_label
         self.mean = mean
-        self.img_ids = [os.path.join(list_path, i_id) for i_id in os.listdir(self.list_path)]
+        self.img_ids = [os.path.join(list_path, i_id) for i_id in os.listdir(self.list_path)
+                        if i_id.endswith(".jpg") or i_id.endswith(".png")]
         self.files = []
         for name in self.img_ids:
             img_file = name  # './dataset/custom_dataset\\Images/test/74.jpg'
