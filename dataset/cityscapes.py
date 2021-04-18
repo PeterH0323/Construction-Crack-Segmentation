@@ -1,4 +1,7 @@
+import os
 import os.path as osp
+from pathlib import Path
+
 import numpy as np
 import random
 import cv2
@@ -192,6 +195,55 @@ class CityscapesTestDataSet(data.Dataset):
             self.files.append({
                 "img": img_file,
                 "name": image_name
+            })
+        print("lenth of dataset: ", len(self.files))
+
+    def __len__(self):
+        return len(self.files)
+
+    def __getitem__(self, index):
+        datafiles = self.files[index]
+
+        image = cv2.imread(datafiles["img"], cv2.IMREAD_COLOR)
+        name = datafiles["name"]
+        image = np.asarray(image, np.float32)
+        size = image.shape
+
+        image -= self.mean
+        # image = image.astype(np.float32) / 255.0
+        image = image[:, :, ::-1]  # change to RGB
+        image = image.transpose((2, 0, 1))  # HWC -> CHW
+        return image.copy(), np.array(size), name
+
+
+class CustomPredictDataSet(data.Dataset):
+    """
+       CustomDataSet is employed to load test set
+       Args:
+        root: the Custom dataset path,
+        list_path: cityscapes_test_list.txt, include partial path
+
+    """
+
+    def __init__(self, root='',
+                 list_path='',
+                 mean=(128, 128, 128),
+                 ignore_label=255):
+        self.root = root
+        self.list_path = list_path
+        self.ignore_label = ignore_label
+        self.mean = mean
+        self.img_ids = [os.path.join(list_path, i_id) for i_id in os.listdir(self.list_path)]
+        self.files = []
+        for name in self.img_ids:
+            img_file = name  # './dataset/custom_dataset\\Images/test/74.jpg'
+            # print(img_file)
+            image_name = Path(name).stem
+
+            # print(image_name)
+            self.files.append({
+                "img": img_file,  # './dataset/custom_dataset\\Images/test/74.jpg'
+                "name": image_name  # '74'
             })
         print("lenth of dataset: ", len(self.files))
 

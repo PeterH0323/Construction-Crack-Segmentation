@@ -1,7 +1,8 @@
 import os
 import pickle
 from torch.utils import data
-from dataset.cityscapes import CityscapesDataSet, CityscapesTrainInform, CityscapesValDataSet, CityscapesTestDataSet
+from dataset.cityscapes import CityscapesDataSet, CityscapesTrainInform, CityscapesValDataSet, CityscapesTestDataSet, \
+    CustomPredictDataSet
 from dataset.camvid import CamVidDataSet, CamVidValDataSet, CamVidTrainInform, CamVidTestDataSet
 
 
@@ -117,4 +118,64 @@ def build_dataset_test(dataset, num_workers, none_gt=False):
             CamVidValDataSet(data_dir, test_data_list, mean=datas['mean']),
             batch_size=1, shuffle=False, num_workers=num_workers, pin_memory=True)
 
+        return datas, testLoader
+
+
+def build_dataset_predict(dataset_path, dataset, num_workers, none_gt=False):
+    data_dir = os.path.join('./dataset/', dataset)
+    dataset_list = dataset + '_trainval_list.txt'
+    predict_data_list = os.path.join(data_dir, dataset + '_test' + '_list.txt')
+    inform_data_file = os.path.join('./dataset/inform/', dataset + '_inform.pkl')
+
+    # inform_data_file collect the information of mean, std and weigth_class
+    if not os.path.isfile(inform_data_file):
+        print("%s is not found" % (inform_data_file))
+        if dataset == "cityscapes":
+            dataCollect = CityscapesTrainInform(data_dir, 19, train_set_file=dataset_list,
+                                                inform_data_file=inform_data_file)
+        elif dataset == 'camvid':
+            dataCollect = CamVidTrainInform(data_dir, 11, train_set_file=dataset_list,
+                                            inform_data_file=inform_data_file)
+        elif dataset == 'custom_dataset':
+            dataCollect = CityscapesTrainInform(data_dir, 2, train_set_file=dataset_list,
+                                                inform_data_file=inform_data_file)
+        else:
+            raise NotImplementedError(
+                "This repository now supports two datasets: cityscapes and camvid, %s is not included" % dataset)
+
+        datas = dataCollect.collectDataAndSave()
+        if datas is None:
+            print("error while pickling data. Please check.")
+            exit(-1)
+    else:
+        print("find file: ", str(inform_data_file))
+        datas = pickle.load(open(inform_data_file, "rb"))
+
+    if dataset == "cityscapes":
+        # for cityscapes, if test on validation set, set none_gt to False
+        # if test on the test set, set none_gt to True
+        if none_gt:
+            testLoader = data.DataLoader(
+                CityscapesTestDataSet(data_dir, test_data_list, mean=datas['mean']),
+                batch_size=1, shuffle=False, num_workers=num_workers, pin_memory=True)
+        else:
+            test_data_list = os.path.join(data_dir, dataset + '_val' + '_list.txt')
+            testLoader = data.DataLoader(
+                CityscapesValDataSet(data_dir, test_data_list, mean=datas['mean']),
+                batch_size=1, shuffle=False, num_workers=num_workers, pin_memory=True)
+
+        return datas, testLoader
+
+    elif dataset == "camvid":
+
+        testLoader = data.DataLoader(
+            CamVidValDataSet(data_dir, test_data_list, mean=datas['mean']),
+            batch_size=1, shuffle=False, num_workers=num_workers, pin_memory=True)
+
+        return datas, testLoader
+
+    elif dataset == "custom_dataset":
+        testLoader = data.DataLoader(
+            CustomPredictDataSet(data_dir, dataset_path, mean=datas['mean']),
+            batch_size=1, shuffle=False, num_workers=num_workers, pin_memory=True)
         return datas, testLoader

@@ -6,7 +6,7 @@ import torch.backends.cudnn as cudnn
 from argparse import ArgumentParser
 # user
 from builders.model_builder import build_model
-from builders.dataset_builder import build_dataset_test
+from builders.dataset_builder import build_dataset_test, build_dataset_predict
 from utils.utils import save_predict
 from utils.convert_state import convert_state_dict
 import cv2
@@ -16,13 +16,16 @@ def parse_args():
     parser = ArgumentParser(description='Efficient semantic segmentation')
     # model and dataset
     parser.add_argument('--model', default="ENet", help="model name: (default ENet)")
-    parser.add_argument('--dataset', default="custom_dataset", help="dataset: cityscapes or camvid")
+    parser.add_argument('--dataset', default="custom_dataset", help="dataset: cityscapes, camvid or custom_dataset")
+    parser.add_argument('--image_input_path', default="./inference_images/input_images", help="load predict_image")
     parser.add_argument('--num_workers', type=int, default=2, help="the number of parallel threads")
+    parser.add_argument('--use_txt_list', type=bool, default=False, help="Using txt list in dataset files")
     parser.add_argument('--batch_size', type=int, default=1,
                         help=" the batch_size is set to 1 when evaluating or testing")
-    parser.add_argument('--checkpoint', type=str,default="",
+    parser.add_argument('--checkpoint', type=str,
+                        default=r"",
                         help="use the file to load the checkpoint for evaluating or testing ")
-    parser.add_argument('--save_seg_dir', type=str, default="./predict_result/",
+    parser.add_argument('--save_seg_dir', type=str, default="./inference_images/predict_output/",
                         help="saving path of prediction result")
     parser.add_argument('--cuda', default=True, help="run on CPU or GPU")
     parser.add_argument("--gpus", default="0", type=str, help="gpu ids (default: 0)")
@@ -60,7 +63,14 @@ def predict(args, test_loader, model):
                      output_grey=True, output_color=True, gt_color=False)
 
         # 将推理出来的 mask 写到原图中并保存成新的图片
-        img = cv2.imread(rf".\dataset\custom_dataset\Images\test\{name[0].split('_predict')[0]}.jpg")  # 原图路径
+        original_file = os.path.join(args.image_input_path, f"{name[0].split('_predict')[0]}.jpg")
+        if not os.path.exists(original_file):
+            original_file = original_file.replace(".jpg", ".png")
+            if not os.path.exists(original_file):
+                FileNotFoundError(
+                    f"{name[0].split('_predict')[0]}.jpg or {name[0].split('_predict')[0]}.png is not found !")
+
+        img = cv2.imread(original_file)  # 原图路径
         mask = output
 
         contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -97,7 +107,10 @@ def test_model(args):
         os.makedirs(args.save_seg_dir)
 
     # load the test set
-    datas, testLoader = build_dataset_test(args.dataset, args.num_workers, none_gt=True)
+    if args.use_txt_list:
+        datas, testLoader = build_dataset_test(args.dataset, args.num_workers, none_gt=True)
+    else:
+        datas, testLoader = build_dataset_predict(args.image_input_path, args.dataset, args.num_workers, none_gt=True)
 
     if args.checkpoint:
         if os.path.isfile(args.checkpoint):
