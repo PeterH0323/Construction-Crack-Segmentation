@@ -222,6 +222,8 @@ class CustomTestDataSet(data.Dataset):
 class CustomPredictDataSet:  # for inference
     def __init__(self, list_path='', mean=(255, 255, 255)):
         self.mean = mean
+        self.frame = 0
+        self.nframes = 0
 
         p = str(Path(list_path))  # os-agnostic
         p = os.path.abspath(p)  # absolute path
