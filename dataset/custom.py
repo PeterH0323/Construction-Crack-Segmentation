@@ -8,9 +8,12 @@ import cv2
 from torch.utils import data
 import pickle
 
+img_formats = ['.bmp', '.jpg', '.jpeg', '.png', '.tif', '.tiff', '.dng']
+vid_formats = ['.mov', '.avi', '.mp4', '.mpg', '.mpeg', '.m4v', '.wmv', '.mkv']
+
 
 class CustomDataSet(data.Dataset):
-    """ 
+    """
        CustomDataSet is employed to load train set
        Args:
         root: the Custom dataset path,
@@ -102,7 +105,7 @@ class CustomDataSet(data.Dataset):
 
 
 class CustomValDataSet(data.Dataset):
-    """ 
+    """
        CustomDataSet is employed to load val set
        Args:
         root: the Custom dataset path,
@@ -167,7 +170,7 @@ class CustomValDataSet(data.Dataset):
 
 
 class CustomTestDataSet(data.Dataset):
-    """ 
+    """
        CustomDataSet is employed to load test set
        Args:
         root: the Custom dataset path,
@@ -216,6 +219,9 @@ class CustomTestDataSet(data.Dataset):
         return image.copy(), np.array(size), name
 
 
+VIDEO_CAP = None
+
+
 class CustomPredictDataSet(data.Dataset):
     """
        CustomDataSet is employed to load test set
@@ -225,16 +231,24 @@ class CustomPredictDataSet(data.Dataset):
 
     """
 
-    def __init__(self, root='',
-                 list_path='',
-                 mean=(128, 128, 128),
-                 ignore_label=255):
-        self.root = root
-        self.list_path = list_path
-        self.ignore_label = ignore_label
+    def __init__(self,
+                 list_path='./inference_images/input_images',
+                 mean=[148.74718, 146.93, 149.1698]
+                 ):
         self.mean = mean
-        self.img_ids = [os.path.join(list_path, i_id) for i_id in os.listdir(self.list_path)
-                        if i_id.endswith(".jpg") or i_id.endswith(".png")]
+
+        if os.path.isdir(list_path):
+            self.img_ids = [os.path.join(list_path, i_id) for i_id in os.listdir(list_path)
+                            if not i_id.endswith(".gitkeep") and os.path.isfile(os.path.join(list_path, i_id))]
+        elif os.path.isfile(list_path):
+            self.img_ids = [list_path]  # files
+        else:
+            raise Exception('ERROR: %s does not exist' % list_path)
+
+        images = [x for x in self.img_ids if os.path.splitext(x)[-1].lower() in img_formats]
+        videos = [x for x in self.img_ids if os.path.splitext(x)[-1].lower() in vid_formats]
+        ni, nv = len(images), len(videos)
+
         self.files = []
         for name in self.img_ids:
             img_file = name  # './dataset/custom_dataset\\Images/test/74.jpg'
@@ -243,8 +257,9 @@ class CustomPredictDataSet(data.Dataset):
 
             # print(image_name)
             self.files.append({
-                "img": img_file,  # './dataset/custom_dataset\\Images/test/74.jpg'
-                "name": image_name  # '74'
+                "path": img_file,  # './dataset/custom_dataset\\Images/test/74.jpg'
+                "name": image_name,  # '74'
+                "type": "image" if name in images else "video",
             })
         print("lenth of dataset: ", len(self.files))
 
@@ -252,18 +267,123 @@ class CustomPredictDataSet(data.Dataset):
         return len(self.files)
 
     def __getitem__(self, index):
+        # global VIDEO_CAP
         datafiles = self.files[index]
 
-        image = cv2.imread(datafiles["img"], cv2.IMREAD_COLOR)
         name = datafiles["name"]
+        file_type = datafiles["type"]
+        if file_type == "image":
+            image = cv2.imread(datafiles["path"], cv2.IMREAD_COLOR)
+        else:
+            # Read video
+            # video_handler = datafiles["video_handler"]
+            print("ready")
+
         image = np.asarray(image, np.float32)
         size = image.shape
 
-        image -= self.mean
+        if file_type == "image":
+            image -= self.mean
         # image = image.astype(np.float32) / 255.0
         image = image[:, :, ::-1]  # change to RGB
         image = image.transpose((2, 0, 1))  # HWC -> CHW
         return image.copy(), np.array(size), name
+
+    def new_video(self, path):
+        self.frame = 0
+        # self._video_cap = cv2.VideoCapture(path)
+        # self.number_frames = int(self._video_cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        # VIDEO_CAP = cv2.VideoCapture(path)
+        # self.number_frames = int(VIDEO_CAP.get(cv2.CAP_PROP_FRAME_COUNT))
+
+
+class LoadImages:  # for inference
+    def __init__(self,
+                 list_path='./inference_images/input_images',
+                 mean=[148.74718, 146.93, 149.1698]
+                 ):
+        self.mean = mean
+
+        p = str(Path(list_path))  # os-agnostic
+        p = os.path.abspath(p)  # absolute path
+
+        if os.path.isdir(list_path):
+            self.img_ids = [os.path.join(list_path, i_id) for i_id in os.listdir(list_path)
+                            if not i_id.endswith(".gitkeep") and os.path.isfile(os.path.join(list_path, i_id))]
+        elif os.path.isfile(list_path):
+            self.img_ids = [list_path]  # files
+        else:
+            raise Exception('ERROR: %s does not exist' % list_path)
+
+        images = [x for x in self.img_ids if os.path.splitext(x)[-1].lower() in img_formats]
+        videos = [x for x in self.img_ids if os.path.splitext(x)[-1].lower() in vid_formats]
+        ni, nv = len(images), len(videos)
+
+        self.files = images + videos
+        self.nf = ni + nv  # number of files
+        self.video_flag = [False] * ni + [True] * nv
+        self.mode = 'images'
+        if any(videos):
+            self.new_video(videos[0])  # new video
+        else:
+            self.cap = None
+        assert self.nf > 0, 'No images or videos found in %s. Supported formats are:\nimages: %s\nvideos: %s' % \
+                            (p, img_formats, vid_formats)
+
+    def __iter__(self):
+        self.count = 0
+        return self
+
+    def __next__(self):
+        if self.count == self.nf:
+            raise StopIteration
+        path = self.files[self.count]
+        info_str = ""
+
+        if self.video_flag[self.count]:
+            # Read video
+            self.mode = 'video'
+            ret_val, img0 = self.cap.read()
+            if not ret_val:
+                self.count += 1
+                self.cap.release()
+                if self.count == self.nf:  # last video
+                    raise StopIteration
+                else:
+                    path = self.files[self.count]
+                    self.new_video(path)
+                    ret_val, img0 = self.cap.read()
+
+            self.frame += 1
+            print('video %g/%g (%g/%g) %s: ' % (self.count + 1, self.nf, self.frame, self.nframes, path), end='')
+            info_str = 'video %g/%g (%g/%g) %s: ' % (self.count + 1, self.nf, self.frame, self.nframes, path)
+
+        else:
+            # Read image
+            self.count += 1
+            img0 = cv2.imread(path, cv2.IMREAD_COLOR)  # BGR
+            assert img0 is not None, 'Image Not Found ' + path
+            print('image %g/%g %s: ' % (self.count, self.nf, path), end='')
+            info_str = 'image %g/%g %s: ' % (self.count, self.nf, path)
+
+        img0 = np.asarray(img0, np.float32)
+        size = img0.shape
+
+        # Padded resize
+        if self.mode == "images":
+            img0 -= self.mean
+        # Convert
+        img = img0[:, :, ::-1].transpose(2, 0, 1)  # BGR to RGB, to 3x416x416
+
+        return img.copy(), np.array(size), path
+
+    def new_video(self, path):
+        self.frame = 0
+        self.cap = cv2.VideoCapture(path)
+        self.nframes = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    def __len__(self):
+        return self.nf  # number of files
 
 
 class CustomTrainInform:
@@ -303,7 +423,7 @@ class CustomTrainInform:
         Args:
         fileName: train set file that stores the image locations
         trainStg: if processing training or validation data
-        
+
         return: 0 if successful
         """
         global_hist = np.zeros(self.classes, dtype=np.float32)

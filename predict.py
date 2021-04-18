@@ -1,5 +1,7 @@
 import os
 import time
+from pathlib import Path
+
 import torch
 import numpy as np
 import torch.backends.cudnn as cudnn
@@ -46,6 +48,8 @@ def predict(args, test_loader, model):
     total_batches = len(test_loader)
     for i, (input, size, name) in enumerate(test_loader):
         with torch.no_grad():
+            input = input[None, ...]  # 增加多一个维度
+            input = torch.tensor(input)  # [1, 3, 224, 224]
             input_var = input.cuda()
         start_time = time.time()
         output = model(input_var)
@@ -58,19 +62,24 @@ def predict(args, test_loader, model):
 
         # Save the predict greyscale output for Cityscapes official evaluation
         # Modify image name to meet official requirement
-        name[0] = name[0].rsplit('_', 1)[0] + '_predict'
-        save_predict(output, None, name[0], args.dataset, args.save_seg_dir,
+        # name[0] = name[0].rsplit('_', 1)[0] + '_predict'
+        # save_predict(output, None, name[0], args.dataset, args.save_seg_dir,
+        #              output_grey=True, output_color=True, gt_color=False)
+
+        save_name = Path(name).stem + '_predict'
+        save_predict(output, None, save_name, args.dataset, args.save_seg_dir,
                      output_grey=True, output_color=True, gt_color=False)
 
         # 将推理出来的 mask 写到原图中并保存成新的图片
-        original_file = os.path.join(args.image_input_path, f"{name[0].split('_predict')[0]}.jpg")
-        if not os.path.exists(original_file):
-            original_file = original_file.replace(".jpg", ".png")
-            if not os.path.exists(original_file):
-                FileNotFoundError(
-                    f"{name[0].split('_predict')[0]}.jpg or {name[0].split('_predict')[0]}.png is not found !")
+        # original_file = os.path.join(args.image_input_path, f"{name[0].split('_predict')[0]}.jpg")
+        # if not os.path.exists(original_file):
+        #     original_file = original_file.replace(".jpg", ".png")
+        #     if not os.path.exists(original_file):
+        #         FileNotFoundError(
+        #             f"{name[0].split('_predict')[0]}.jpg or {name[0].split('_predict')[0]}.png is not found !")
 
-        img = cv2.imread(original_file)  # 原图路径
+        # img = cv2.imread(original_file)  # 原图路径
+        img = cv2.imread(name)  # 原图路径
         mask = output
 
         contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -79,7 +88,8 @@ def predict(args, test_loader, model):
         img = img[:, :, ::-1]
         img[..., 2] = np.where(mask == 1, 255, img[..., 2])
 
-        cv2.imwrite(f"{os.path.join(args.save_seg_dir, name[0] + '_img.png')}", img)
+        # cv2.imwrite(f"{os.path.join(args.save_seg_dir, name[0] + '_img.png')}", img)
+        cv2.imwrite(f"{os.path.join(args.save_seg_dir, Path(name).stem + '_img.png')}", img)
 
 
 def predict_model(args):

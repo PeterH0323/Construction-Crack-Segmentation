@@ -3,7 +3,7 @@ import pickle
 from torch.utils import data
 from dataset.cityscapes import CityscapesDataSet, CityscapesTrainInform, CityscapesValDataSet, CityscapesTestDataSet
 from dataset.camvid import CamVidDataSet, CamVidValDataSet, CamVidTrainInform, CamVidTestDataSet
-from dataset.custom import CustomTrainInform, CustomTestDataSet, CustomValDataSet, CustomDataSet, CustomPredictDataSet
+from dataset.custom import CustomTrainInform, CustomTestDataSet, CustomValDataSet, CustomDataSet, LoadImages
 
 
 def build_dataset_train(dataset, input_size, batch_size, train_type, random_scale, random_mirror, num_workers):
@@ -181,10 +181,13 @@ def build_dataset_predict(dataset_path, dataset, num_workers, none_gt=False):
         datas = pickle.load(open(inform_data_file, "rb"))
 
     if dataset == "custom_dataset":
-        testLoader = data.DataLoader(
-            CustomPredictDataSet(data_dir, dataset_path, mean=datas['mean']),
-            batch_size=1, shuffle=False, num_workers=num_workers, pin_memory=True)
+        testLoader = LoadImages(dataset_path, mean=datas['mean'])
         return datas, testLoader
+
+        # testLoader = data.DataLoader(
+        #     CustomPredictDataSet(dataset_path, mean=datas['mean']),
+        #     batch_size=1, shuffle=False, num_workers=num_workers, pin_memory=True)
+        # return datas, testLoader
 
     # elif dataset == "cityscapes":
     #     # for cityscapes, if test on validation set, set none_gt to False
