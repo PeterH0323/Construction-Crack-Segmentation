@@ -1,9 +1,9 @@
 import os
 import pickle
 from torch.utils import data
-from dataset.cityscapes import CityscapesDataSet, CityscapesTrainInform, CityscapesValDataSet, CityscapesTestDataSet, \
-    CustomPredictDataSet
+from dataset.cityscapes import CityscapesDataSet, CityscapesTrainInform, CityscapesValDataSet, CityscapesTestDataSet
 from dataset.camvid import CamVidDataSet, CamVidValDataSet, CamVidTrainInform, CamVidTestDataSet
+from dataset.custom import CustomTrainInform, CustomTestDataSet, CustomValDataSet, CustomDataSet, CustomPredictDataSet
 
 
 def build_dataset_train(dataset, input_size, batch_size, train_type, random_scale, random_mirror, num_workers):
@@ -23,8 +23,8 @@ def build_dataset_train(dataset, input_size, batch_size, train_type, random_scal
             dataCollect = CamVidTrainInform(data_dir, 11, train_set_file=dataset_list,
                                             inform_data_file=inform_data_file)
         elif dataset == 'custom_dataset':
-            dataCollect = CityscapesTrainInform(data_dir, 2, train_set_file=dataset_list,
-                                                inform_data_file=inform_data_file)
+            dataCollect = CustomTrainInform(data_dir, 2, train_set_file=dataset_list,
+                                            inform_data_file=inform_data_file)
         else:
             raise NotImplementedError(
                 "This repository now supports two datasets: cityscapes and camvid, %s is not included" % dataset)
@@ -37,7 +37,7 @@ def build_dataset_train(dataset, input_size, batch_size, train_type, random_scal
         print("find file: ", str(inform_data_file))
         datas = pickle.load(open(inform_data_file, "rb"))
 
-    if dataset == "cityscapes" or dataset == "custom_dataset":
+    if dataset == "cityscapes":
 
         trainLoader = data.DataLoader(
             CityscapesDataSet(data_dir, train_data_list, crop_size=input_size, scale=random_scale,
@@ -47,6 +47,21 @@ def build_dataset_train(dataset, input_size, batch_size, train_type, random_scal
 
         valLoader = data.DataLoader(
             CityscapesValDataSet(data_dir, val_data_list, f_scale=1, mean=datas['mean']),
+            batch_size=1, shuffle=True, num_workers=num_workers, pin_memory=True,
+            drop_last=True)
+
+        return datas, trainLoader, valLoader
+
+    elif dataset == "custom_dataset":
+
+        trainLoader = data.DataLoader(
+            CustomDataSet(data_dir, train_data_list, crop_size=input_size, scale=random_scale,
+                          mirror=random_mirror, mean=datas['mean']),
+            batch_size=batch_size, shuffle=True, num_workers=num_workers,
+            pin_memory=True, drop_last=True)
+
+        valLoader = data.DataLoader(
+            CustomValDataSet(data_dir, val_data_list, f_scale=1, mean=datas['mean']),
             batch_size=1, shuffle=True, num_workers=num_workers, pin_memory=True,
             drop_last=True)
 
@@ -83,8 +98,8 @@ def build_dataset_test(dataset, num_workers, none_gt=False):
             dataCollect = CamVidTrainInform(data_dir, 11, train_set_file=dataset_list,
                                             inform_data_file=inform_data_file)
         elif dataset == 'custom_dataset':
-            dataCollect = CityscapesTrainInform(data_dir, 2, train_set_file=dataset_list,
-                                                inform_data_file=inform_data_file)
+            dataCollect = CustomTrainInform(data_dir, 2, train_set_file=dataset_list,
+                                            inform_data_file=inform_data_file)
         else:
             raise NotImplementedError(
                 "This repository now supports two datasets: cityscapes and camvid, %s is not included" % dataset)
@@ -97,7 +112,7 @@ def build_dataset_test(dataset, num_workers, none_gt=False):
         print("find file: ", str(inform_data_file))
         datas = pickle.load(open(inform_data_file, "rb"))
 
-    if dataset == "cityscapes" or dataset == "custom_dataset":
+    if dataset == "cityscapes":
         # for cityscapes, if test on validation set, set none_gt to False
         # if test on the test set, set none_gt to True
         if none_gt:
@@ -108,6 +123,21 @@ def build_dataset_test(dataset, num_workers, none_gt=False):
             test_data_list = os.path.join(data_dir, dataset + '_val' + '_list.txt')
             testLoader = data.DataLoader(
                 CityscapesValDataSet(data_dir, test_data_list, mean=datas['mean']),
+                batch_size=1, shuffle=False, num_workers=num_workers, pin_memory=True)
+
+        return datas, testLoader
+
+    elif dataset == "custom_dataset":
+        # for custom_dataset, if test on validation set, set none_gt to False
+        # if test on the test set, set none_gt to True
+        if none_gt:
+            testLoader = data.DataLoader(
+                CustomTestDataSet(data_dir, test_data_list, mean=datas['mean']),
+                batch_size=1, shuffle=False, num_workers=num_workers, pin_memory=True)
+        else:
+            test_data_list = os.path.join(data_dir, dataset + '_val' + '_list.txt')
+            testLoader = data.DataLoader(
+                CustomValDataSet(data_dir, test_data_list, mean=datas['mean']),
                 batch_size=1, shuffle=False, num_workers=num_workers, pin_memory=True)
 
         return datas, testLoader
@@ -136,8 +166,8 @@ def build_dataset_predict(dataset_path, dataset, num_workers, none_gt=False):
             dataCollect = CamVidTrainInform(data_dir, 11, train_set_file=dataset_list,
                                             inform_data_file=inform_data_file)
         elif dataset == 'custom_dataset':
-            dataCollect = CityscapesTrainInform(data_dir, 2, train_set_file=dataset_list,
-                                                inform_data_file=inform_data_file)
+            dataCollect = CustomTrainInform(data_dir, 2, train_set_file=dataset_list,
+                                            inform_data_file=inform_data_file)
         else:
             raise NotImplementedError(
                 "This repository now supports two datasets: cityscapes and camvid, %s is not included" % dataset)
