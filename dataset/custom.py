@@ -366,16 +366,17 @@ class LoadImages:  # for inference
             print('image %g/%g %s: ' % (self.count, self.nf, path), end='')
             info_str = 'image %g/%g %s: ' % (self.count, self.nf, path)
 
-        img0 = np.asarray(img0, np.float32)
-        size = img0.shape
+        img = np.asarray(img0, np.float32)
+        size = img.shape
 
         # Padded resize
-        if self.mode == "images":
-            img0 -= self.mean
+        # if self.mode == "images":
+        #     img0 -= self.mean
+        img -= self.mean
         # Convert
-        img = img0[:, :, ::-1].transpose(2, 0, 1)  # BGR to RGB, to 3x416x416
+        img = img[:, :, ::-1].transpose(2, 0, 1)  # BGR to RGB, to 3x416x416
 
-        return img.copy(), np.array(size), path
+        return img.copy(), np.array(size), path, self.mode, self.frame, img0
 
     def new_video(self, path):
         self.frame = 0

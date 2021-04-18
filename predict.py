@@ -46,7 +46,7 @@ def predict(args, test_loader, model):
     # evaluation or test mode
     model.eval()
     total_batches = len(test_loader)
-    for i, (input, size, name) in enumerate(test_loader):
+    for i, (input, size, name, mode, frame_count, img_original) in enumerate(test_loader):
         with torch.no_grad():
             input = input[None, ...]  # 增加多一个维度
             input = torch.tensor(input)  # [1, 3, 224, 224]
@@ -66,7 +66,7 @@ def predict(args, test_loader, model):
         # save_predict(output, None, name[0], args.dataset, args.save_seg_dir,
         #              output_grey=True, output_color=True, gt_color=False)
 
-        save_name = Path(name).stem + '_predict'
+        save_name = Path(name).stem + f'_predict_{frame_count}'
         save_predict(output, None, save_name, args.dataset, args.save_seg_dir,
                      output_grey=True, output_color=True, gt_color=False)
 
@@ -79,7 +79,8 @@ def predict(args, test_loader, model):
         #             f"{name[0].split('_predict')[0]}.jpg or {name[0].split('_predict')[0]}.png is not found !")
 
         # img = cv2.imread(original_file)  # 原图路径
-        img = cv2.imread(name)  # 原图路径
+        # if mode == "images":
+        img = img_original  # 原图
         mask = output
 
         contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -89,7 +90,7 @@ def predict(args, test_loader, model):
         img[..., 2] = np.where(mask == 1, 255, img[..., 2])
 
         # cv2.imwrite(f"{os.path.join(args.save_seg_dir, name[0] + '_img.png')}", img)
-        cv2.imwrite(f"{os.path.join(args.save_seg_dir, Path(name).stem + '_img.png')}", img)
+        cv2.imwrite(f"{os.path.join(args.save_seg_dir, save_name + '_img.png')}", img)
 
 
 def predict_model(args):
