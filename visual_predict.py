@@ -357,6 +357,9 @@ class SegmentationModel(object):
         vid_mask_writer = None
         vid_mask_path = None
 
+        self.input_windows_width = 0
+        self.output_windows_height = 0
+
         for i, (input, size, name, mode, frame_count, img_original, vid_cap, info_str) in enumerate(dataset_loader):
             with torch.no_grad():
                 input = input[None, ...]  # 增加多一个维度
