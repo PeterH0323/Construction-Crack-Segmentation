@@ -318,20 +318,6 @@ class SegmentationModel(object):
                 self.input_windows_width = image_label.width()
             resize_factor = self.input_windows_width / img.shape[1]
 
-        # if scale_type == "W":
-        #     resize_factor = image_label.width() / img.shape[1]
-        # else:
-        #     resize_factor = image_label.height() / img.shape[0]
-        # resize_factor = image_label.width() / img.shape[1]
-        # resize_factor = image_label.height() / img.shape[0]
-        # resize_factor = self.windows_height / img.shape[0]
-
-        # if img.shape[0] * resize_factor > self.windows_height:
-        #     resize_factor = image_label.height() / img.shape[0]
-
-        # if img.shape[1] * resize_factor > image_label.width():
-        #     resize_factor = 0.99
-
         img = cv2.resize(img, (int(img.shape[1] * resize_factor), int(img.shape[0] * resize_factor)),
                          interpolation=cv2.INTER_CUBIC)
 
