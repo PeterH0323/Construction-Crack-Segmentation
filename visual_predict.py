@@ -9,9 +9,17 @@
 
 # 解决 exe 打包 Can't get source for 的问题 start ======
 # https://github.com/pytorch/vision/issues/1899#issuecomment-598200938
-import torch.jit
+import math
 
+import cv2
+import numpy as np
+import torch.jit
+from torch.backends import cudnn
+
+from builders.dataset_builder import build_dataset_predict
+from builders.model_builder import build_model
 from dataset.custom import img_formats
+from utils.utils import save_predict
 
 
 def script_method(fn, _rcb=None):
@@ -34,10 +42,11 @@ from GPUtil import GPUtil
 from PyQt5.QtCore import QThread, pyqtSignal, QUrl, pyqtSlot, QTimer, QDateTime, Qt
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog
-from PyQt5.QtGui import QColor, QBrush, QIcon, QPixmap
+from PyQt5.QtGui import QColor, QBrush, QIcon, QPixmap, QImage
 from PyQt5.QtChart import QDateTimeAxis, QValueAxis, QSplineSeries, QChart
 import torch
 from UI.main_window import Ui_MainWindow
+
 # from detect_visual import YOLOPredict
 # from utils.datasets import img_formats
 
@@ -109,13 +118,15 @@ class PredictHandlerThread(QThread):
 
     def __init__(self, input_player, output_player, out_file_path, weight_path,
                  predict_info_plain_text_edit, predict_progress_bar, fps_label,
-                 button_dict, input_tab, output_tab, input_image_label, output_image_label,
+                 button_dict, input_tab, output_tab, input_image_label, output_image_label, output_mask_real_time_label,
                  real_time_show_predict_flag):
         super(PredictHandlerThread, self).__init__()
         self.running = False
 
         '''加载模型'''
-        self.predict_model = YOLOPredict(weight_path, out_file_path)
+        net_type = Path(weight_path).stem.split("_")[0]
+        self.predict_model = SegmentationModel(net_type, weight_path, out_file_path,
+                                               dataset_type="custom_dataset", gpu_number="0", class_number=2)
         self.output_predict_file = ""
         self.parameter_source = ''
 
@@ -130,6 +141,7 @@ class PredictHandlerThread(QThread):
         self.output_tab = output_tab
         self.input_image_label = input_image_label
         self.output_image_label = output_image_label
+        self.output_mask_real_time_label = output_mask_real_time_label
 
         # 是否实时显示推理图片
         self.real_time_show_predict_flag = real_time_show_predict_flag
@@ -152,18 +164,21 @@ class PredictHandlerThread(QThread):
         image_flag = os.path.splitext(self.parameter_source)[-1].lower() in img_formats
         qt_input = None
         qt_output = None
+        mask_qt_output = None
 
         if not image_flag and self.real_time_show_predict_flag:
             qt_input = self.input_image_label
             qt_output = self.output_image_label
+            mask_qt_output = self.output_mask_real_time_label
             # tab 设置显示第二栏
             self.input_tab.setCurrentIndex(REAL_TIME_PREDICT_TAB_INDEX)
             self.output_tab.setCurrentIndex(REAL_TIME_PREDICT_TAB_INDEX)
 
-        with torch.no_grad():
-            self.output_predict_file = self.predict_model.detect(self.parameter_source,
-                                                                 qt_input=qt_input,
-                                                                 qt_output=qt_output)
+        # with torch.no_grad():
+        self.output_predict_file = self.predict_model.detect(self.parameter_source,
+                                                             qt_input=qt_input,
+                                                             qt_output=qt_output,
+                                                             qt_mask_output=mask_qt_output)
 
         if self.output_predict_file != "":
             # 将 str 路径转为 QUrl 并显示
@@ -207,6 +222,185 @@ class PredictHandlerThread(QThread):
             # 设置 FPS
             second_count = 1 / float(split_message[-1][1:-2])
             self.fps_label.setText(f"--> {second_count:.1f} FPS")
+
+
+class SegmentationModel(object):
+
+    def __init__(self, net_type, model_path, save_seg_dir, dataset_type="custom_dataset", num_workers=2,
+                 batch_size=1, gpu_number="0", class_number=2):
+        """
+        初始化参数
+        :param net_type: 网络类型
+        :param model_path: 模型路径
+        :param save_seg_dir: 结果保存路径
+        :param dataset_type: 数据集类型
+        :param num_workers: 使用的线程数
+        :param batch_size: 推理的 batch size
+        :param gpu_number: 使用的 GPU
+        :param class_number: 类别数量
+        """
+        self.model = None  # 模型实例
+        self.net_type = net_type  # 网络类型
+        self.dataset_type = dataset_type  # 数据集的类型
+        # self.image_input_path = None  # 输入图片的路径
+        self.num_workers = num_workers  # 使用的线程数
+        self.use_txt_list = False  # 是否使用 txt
+        self.batch_size = batch_size  # 推理的 batch size
+        self.model_path = model_path  # 模型路径
+        self.save_seg_dir = save_seg_dir  # 结果保存路径
+        self.cuda = True  # 是否使用 cuda
+        self.gpu_number = gpu_number  # 使用的 GPU
+        self.classes = class_number  # 类别数量
+
+        self.predict_info = ""  # 推理信息
+
+        self.load_model()
+
+    def load_model(self):
+        """
+        加载权重
+        """
+        if self.cuda:
+            print("=====> use gpu id: '{}'".format(self.gpu_number))
+            os.environ["CUDA_VISIBLE_DEVICES"] = self.gpu_number
+            if not torch.cuda.is_available():
+                raise Exception("no GPU found or wrong gpu id, please run without --cuda")
+
+        # build the model
+        self.model = build_model(self.net_type, num_classes=self.classes)
+
+        if self.cuda:
+            self.model = self.model.cuda()  # using GPU for inference
+            cudnn.benchmark = True
+
+        if os.path.isfile(self.model_path):
+            print(f"=====> loading checkpoint '{self.model_path}'")
+            checkpoint = torch.load(self.model_path)
+            self.model.load_state_dict(checkpoint['model'])
+            # model.load_state_dict(convert_state_dict(checkpoint['model']))
+        else:
+            print("=====> no checkpoint found at '{self.model_path}'")
+            raise FileNotFoundError(f"no checkpoint found at '{self.model_path}'")
+
+        if not os.path.exists(self.save_seg_dir):
+            os.makedirs(self.save_seg_dir)
+
+    @staticmethod
+    def show_real_time_image(image_label, img):
+        """
+        image_label 显示实时推理图片
+        :param image_label: 本次需要显示的 label 句柄
+        :param img: cv2 图片
+        :return:
+        """
+        if image_label is None:
+            return
+
+        image_label_width = image_label.width()
+        resize_factor = image_label_width / img.shape[1]
+
+        img = cv2.resize(img, (int(img.shape[1] * resize_factor), int(img.shape[0] * resize_factor)),
+                         interpolation=cv2.INTER_CUBIC)
+        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # OpenCV 读取的bgr格式图片转换成rgb格式
+        image = QImage(img_rgb[:],
+                       img_rgb.shape[1],
+                       img_rgb.shape[0],
+                       img_rgb.shape[1] * 3,
+                       QImage.Format_RGB888)
+        img_show = QPixmap(image)
+        image_label.setPixmap(img_show)
+
+    def detect(self, source, save_img=False, qt_input=None, qt_output=None, qt_mask_output=None):
+        """
+        args:
+          test_loader: loaded for test dataset, for those that do not provide label on the test set
+          model: model
+        return: class IoU and mean IoU
+        """
+
+        # load the test set
+        _, dataset_loader = build_dataset_predict(source, self.dataset_type, self.num_workers, none_gt=True)
+
+        show_count = 0
+
+        # evaluation or test mode
+        self.model.eval()
+        total_batches = len(dataset_loader)
+        vid_writer = None
+        vid_path = None
+
+        for i, (input, size, name, mode, frame_count, img_original, vid_cap, info_str) in enumerate(dataset_loader):
+            with torch.no_grad():
+                input = input[None, ...]  # 增加多一个维度
+                input = torch.tensor(input)  # [1, 3, 224, 224]
+                input_var = input.cuda()
+            start_time = time.time()
+            output = self.model(input_var)
+            torch.cuda.synchronize()
+            time_taken = time.time() - start_time
+            print(f'[{i + 1}/{total_batches}]  time: {time_taken * 1000:.4f} ms = {1 / time_taken:.1f} FPS')
+            output = output.cpu().data[0].numpy()
+            output = output.transpose(1, 2, 0)
+            output = np.asarray(np.argmax(output, axis=2), dtype=np.uint8)
+
+            save_name = Path(name).stem + f'_predict'
+            if mode == 'images':
+                # 保存图片推理结果
+                save_predict(output, None, save_name, self.dataset_type, self.save_seg_dir,
+                             output_grey=True, output_color=True, gt_color=False)
+
+            # 将结果和原图画到一起
+            img = img_original
+            mask = output
+            mask[mask == 1] = 255  # 将 mask 的 1 变成 255 --> 用于后面显示充当红色通道
+            zeros = np.zeros(mask.shape[:2], dtype="uint8")  # 生成 全为0 的矩阵，用于充当 蓝色 和 绿色通道
+            mask_final = cv2.merge([zeros, zeros, mask])  # 合并成 3 通道
+            img = cv2.addWeighted(img, 1, mask_final, 1, 0)  # 合并
+
+            # 保存推理信息
+            image_shape = f'{img_original.shape[0]}x{img_original.shape[1]}'
+            self.predict_info = info_str + '%sDone. (%.3fs)' % (image_shape, time_taken)
+            print(self.predict_info)
+            # QT 显示
+            if qt_input is not None and qt_output is not None and dataset_loader.mode == 'video':
+                video_count, vid_total = info_str.split(" ")[2][1:-1].split("/")  # 得出当前总帧数
+                fps = (time_taken / 1) * 100
+                fps_threshold = 25  # FPS 阈值
+                show_flag = True
+                if fps > fps_threshold:  # 如果 FPS > 阀值，则跳帧处理
+                    fps_interval = 15  # 实时显示的帧率
+                    show_unit = math.ceil(fps / fps_interval)  # 取出多少帧显示一帧，向上取整
+                    if int(video_count) % show_unit != 0:  # 跳帧显示
+                        show_flag = False
+                    else:
+                        show_count += 1
+
+                if show_flag:
+                    # 推理前的图片 origin_image, 推理后的图片 im0
+                    self.show_real_time_image(qt_input, img_original)  # 原图
+                    self.show_real_time_image(qt_output, img)  # 最终推理图
+                    self.show_real_time_image(qt_mask_output, mask_final)  # 分割 mask 图
+
+            if mode == 'images':
+                # 保存 推理+原图 结果
+                save_path = os.path.join(self.save_seg_dir, save_name + '_img.png')
+                cv2.imwrite(f"{save_path}", img)
+            else:
+                # 保存视频
+                save_path = os.path.join(self.save_seg_dir, save_name + '_predict.mp4')
+                if vid_path != save_path:  # new video
+                    vid_path = save_path
+                    if isinstance(vid_writer, cv2.VideoWriter):
+                        vid_writer.release()  # release previous video writer
+
+                    fourcc = 'mp4v'  # output video codec
+                    fps = vid_cap.get(cv2.CAP_PROP_FPS)
+                    w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                    h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                    vid_writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*fourcc), fps, (w, h))
+                vid_writer.write(img)
+
+        return save_path
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
@@ -258,22 +452,23 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # 播放时长, 以 input 的时长为准
         self.video_length = 0
         self.out_file_path = out_file_path
-        # # 推理使用另外一线程
-        # self.predict_handler_thread = PredictHandlerThread(self.input_player,
-        #                                                    self.output_player,
-        #                                                    self.out_file_path,
-        #                                                    weight_path,
-        #                                                    self.predict_info_plainTextEdit,
-        #                                                    self.predict_progressBar,
-        #                                                    self.fps_label,
-        #                                                    self.button_dict,
-        #                                                    self.input_media_tabWidget,
-        #                                                    self.output_media_tabWidget,
-        #                                                    self.input_real_time_label,
-        #                                                    self.output_real_time_label,
-        #                                                    real_time_show_predict_flag
-        #                                                    )
-        self.weight_label.setText(f" Using weight : ****** {Path(weight_path[0]).name} ******")
+        # 推理使用另外一线程
+        self.predict_handler_thread = PredictHandlerThread(self.input_player,
+                                                           self.output_player,
+                                                           self.out_file_path,
+                                                           weight_path,
+                                                           self.predict_info_plainTextEdit,
+                                                           self.predict_progressBar,
+                                                           self.fps_label,
+                                                           self.button_dict,
+                                                           self.input_media_tabWidget,
+                                                           self.output_media_tabWidget,
+                                                           self.input_real_time_label,
+                                                           self.output_real_time_label,
+                                                           self.output_mask_real_time_label,
+                                                           real_time_show_predict_flag
+                                                           )
+        self.weight_label.setText(f" Using weight : ****** {Path(weight_path).name} ******")
         # 界面美化
         self.gen_better_gui()
 
@@ -320,7 +515,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         :return:
         """
         self.real_time_check_state = self.real_time_checkBox.isChecked()
-        # self.predict_handler_thread.real_time_show_predict_flag = self.real_time_check_state
+        self.predict_handler_thread.real_time_show_predict_flag = self.real_time_check_state
 
     def chart_init(self):
         """
@@ -469,7 +664,7 @@ if __name__ == '__main__':
         raise FileNotFoundError("weights not found !!!")
 
     weight_file = [item for item in weight_root.iterdir() if item.suffix == ".pth"]
-    weight_root = [str(weight_file[0])]  # 权重文件位置
+    weight_root = str(weight_file[0])  # 权重文件位置
     out_file_root = Path.cwd().joinpath(r'result/output')
     out_file_root.parent.mkdir(exist_ok=True)
     out_file_root.mkdir(exist_ok=True)
