@@ -455,7 +455,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self, weight_path, out_file_path, real_time_show_predict_flag: bool, parent=None):
         super(MainWindow, self).__init__(parent)
         self.setupUi(self)
-        self.setWindowTitle("Intelligent Monitoring System of Construction Site Software " + CODE_VER)
+        self.setWindowTitle("Image Segmentation System for Crack Detection " + CODE_VER)
         self.showMaximized()
 
         '''按键绑定'''
