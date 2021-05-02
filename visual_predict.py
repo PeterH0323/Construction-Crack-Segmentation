@@ -334,8 +334,13 @@ class SegmentationModel(object):
 
         img = cv2.resize(img, (int(img.shape[1] * resize_factor), int(img.shape[0] * resize_factor)),
                          interpolation=cv2.INTER_CUBIC)
-        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # OpenCV 读取的bgr格式图片转换成rgb格式
 
+        if scale_type == "output":
+            # 使用黑框填充，确保图片显示在正中
+            border_with = (image_label.width() - img.shape[1]) // 2
+            img = cv2.copyMakeBorder(img, 0, 0, border_with, border_with, cv2.BORDER_CONSTANT)
+
+        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # OpenCV 读取的bgr格式图片转换成rgb格式
         image = QImage(img_rgb[:],
                        img_rgb.shape[1],
                        img_rgb.shape[0],
