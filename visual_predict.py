@@ -262,7 +262,8 @@ class SegmentationModel(object):
         self.gpu_number = gpu_number  # 使用的 GPU
         self.classes = class_number  # 类别数量
 
-        self.windows_height = 0
+        self.input_windows_width = 0
+        self.output_windows_height = 0
 
         self.predict_info = ""  # 推理信息
 
@@ -308,8 +309,14 @@ class SegmentationModel(object):
         if image_label is None:
             return
 
-        if self.windows_height == 0:
-            self.windows_height = image_label.height()
+        if scale_type == "output":
+            if self.output_windows_height == 0:
+                self.output_windows_height = image_label.height()
+            resize_factor = self.output_windows_height / img.shape[0]
+        else:
+            if self.input_windows_width == 0:
+                self.input_windows_width = image_label.width()
+            resize_factor = self.input_windows_width / img.shape[1]
 
         # if scale_type == "W":
         #     resize_factor = image_label.width() / img.shape[1]
@@ -317,7 +324,7 @@ class SegmentationModel(object):
         #     resize_factor = image_label.height() / img.shape[0]
         # resize_factor = image_label.width() / img.shape[1]
         # resize_factor = image_label.height() / img.shape[0]
-        resize_factor = self.windows_height / img.shape[0]
+        # resize_factor = self.windows_height / img.shape[0]
 
         # if img.shape[0] * resize_factor > self.windows_height:
         #     resize_factor = image_label.height() / img.shape[0]
@@ -407,9 +414,9 @@ class SegmentationModel(object):
 
                 if show_flag:
                     # 推理前的图片 origin_image, 推理后的图片 im0
-                    self.show_real_time_image("H", qt_output, img)  # 最终推理图
-                    self.show_real_time_image("H", qt_mask_output, mask_final)  # 分割 mask 图
-                    self.show_real_time_image("W", qt_input, img_original)  # 原图
+                    self.show_real_time_image("input", qt_input, img_original)  # 原图
+                    self.show_real_time_image("output", qt_output, img)  # 最终推理图
+                    self.show_real_time_image("output", qt_mask_output, mask_final)  # 分割 mask 图
 
             if mode == 'images':
                 # 保存 推理+原图 结果

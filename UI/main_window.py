@@ -214,31 +214,6 @@ class Ui_MainWindow(object):
         spacerItem6 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Minimum)
         self.horizontalLayout.addItem(spacerItem6)
         self.verticalLayout.addLayout(self.horizontalLayout)
-        self.groupBox_9 = QtWidgets.QGroupBox(self.groupBox)
-        self.groupBox_9.setMaximumSize(QtCore.QSize(16777215, 150))
-        font = QtGui.QFont()
-        font.setFamily("微软雅黑")
-        font.setPointSize(10)
-        self.groupBox_9.setFont(font)
-        self.groupBox_9.setObjectName("groupBox_9")
-        self.horizontalLayout_33 = QtWidgets.QHBoxLayout(self.groupBox_9)
-        self.horizontalLayout_33.setObjectName("horizontalLayout_33")
-        self.predict_info_plainTextEdit_2 = QtWidgets.QPlainTextEdit(self.groupBox_9)
-        self.predict_info_plainTextEdit_2.setMaximumSize(QtCore.QSize(16777215, 100))
-        font = QtGui.QFont()
-        font.setFamily("微软雅黑")
-        font.setPointSize(10)
-        self.predict_info_plainTextEdit_2.setFont(font)
-        self.predict_info_plainTextEdit_2.setStyleSheet("\n"
-"QPlainTextEdit {\n"
-"    background-color: cornsilk;\n"
-"    selection-color: #0a214c; \n"
-"    selection-background-color: #C19A6B;\n"
-"}\n"
-"")
-        self.predict_info_plainTextEdit_2.setObjectName("predict_info_plainTextEdit_2")
-        self.horizontalLayout_33.addWidget(self.predict_info_plainTextEdit_2)
-        self.verticalLayout.addWidget(self.groupBox_9)
         self.groupBox_2 = QtWidgets.QGroupBox(self.splitter)
         self.groupBox_2.setMinimumSize(QtCore.QSize(500, 0))
         self.groupBox_2.setMaximumSize(QtCore.QSize(16777215, 16777215))
@@ -407,6 +382,31 @@ class Ui_MainWindow(object):
         self.predict_info_plainTextEdit.setObjectName("predict_info_plainTextEdit")
         self.horizontalLayout_6.addWidget(self.predict_info_plainTextEdit)
         self.horizontalLayout_5.addWidget(self.groupBox_3)
+        self.groupBox_9 = QtWidgets.QGroupBox(self.centralwidget)
+        self.groupBox_9.setMaximumSize(QtCore.QSize(16777215, 150))
+        font = QtGui.QFont()
+        font.setFamily("微软雅黑")
+        font.setPointSize(10)
+        self.groupBox_9.setFont(font)
+        self.groupBox_9.setObjectName("groupBox_9")
+        self.horizontalLayout_33 = QtWidgets.QHBoxLayout(self.groupBox_9)
+        self.horizontalLayout_33.setObjectName("horizontalLayout_33")
+        self.predict_info_plainTextEdit_2 = QtWidgets.QPlainTextEdit(self.groupBox_9)
+        self.predict_info_plainTextEdit_2.setMaximumSize(QtCore.QSize(16777215, 100))
+        font = QtGui.QFont()
+        font.setFamily("微软雅黑")
+        font.setPointSize(10)
+        self.predict_info_plainTextEdit_2.setFont(font)
+        self.predict_info_plainTextEdit_2.setStyleSheet("\n"
+"QPlainTextEdit {\n"
+"    background-color: cornsilk;\n"
+"    selection-color: #0a214c; \n"
+"    selection-background-color: #C19A6B;\n"
+"}\n"
+"")
+        self.predict_info_plainTextEdit_2.setObjectName("predict_info_plainTextEdit_2")
+        self.horizontalLayout_33.addWidget(self.predict_info_plainTextEdit_2)
+        self.horizontalLayout_5.addWidget(self.groupBox_9)
         self.verticalLayout_8.addLayout(self.horizontalLayout_5)
         self.gpu_info_chart = QChartView(self.centralwidget)
         self.gpu_info_chart.setMaximumSize(QtCore.QSize(16777215, 100))
@@ -448,7 +448,6 @@ class Ui_MainWindow(object):
         self.import_media_pushButton.setText(_translate("MainWindow", "Import"))
         self.start_predict_pushButton.setStatusTip(_translate("MainWindow", "Predict the vedio"))
         self.start_predict_pushButton.setText(_translate("MainWindow", "Predict"))
-        self.groupBox_9.setTitle(_translate("MainWindow", "Segmentation Info:"))
         self.groupBox_2.setTitle(_translate("MainWindow", "Output Media"))
         self.output_media_tabWidget.setTabText(self.output_media_tabWidget.indexOf(self.tab_3), _translate("MainWindow", "结果"))
         self.output_real_time_label.setText(_translate("MainWindow", "HinGwenWoong"))
@@ -461,5 +460,6 @@ class Ui_MainWindow(object):
         self.play_pushButton.setText(_translate("MainWindow", "Play"))
         self.pause_pushButton.setText(_translate("MainWindow", "Pause"))
         self.groupBox_3.setTitle(_translate("MainWindow", "Predict Info:"))
+        self.groupBox_9.setTitle(_translate("MainWindow", "Segmentation Info:"))
 from PyQt5.QtChart import QChartView
 from PyQt5.QtMultimediaWidgets import QVideoWidget
