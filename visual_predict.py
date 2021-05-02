@@ -50,7 +50,7 @@ from UI.main_window import Ui_MainWindow
 # from detect_visual import YOLOPredict
 # from utils.datasets import img_formats
 
-CODE_VER = "V1.0"
+CODE_VER = "V1.0.1"
 PREDICT_SHOW_TAB_INDEX = 0
 REAL_TIME_PREDICT_TAB_INDEX = 1
 
