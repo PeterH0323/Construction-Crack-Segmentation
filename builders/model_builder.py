@@ -17,7 +17,6 @@ from model.FSSNet import FSSNet
 from model.FPENet import FPENet
 
 
-
 def build_model(model_name, num_classes):
     if model_name == 'SQNet':
         return SQNet(classes=num_classes)

@@ -118,7 +118,8 @@ class PredictHandlerThread(QThread):
 
     def __init__(self, input_player, output_player, out_file_path, weight_path,
                  predict_info_plain_text_edit, predict_progress_bar, fps_label,
-                 button_dict, input_tab, output_tab, input_image_label, output_image_label, output_mask_real_time_label,
+                 button_dict, input_tab, output_tab, input_image_label, output_image_label,
+                 output_mask_player, output_mask_tab, output_mask_real_time_label,
                  real_time_show_predict_flag):
         super(PredictHandlerThread, self).__init__()
         self.running = False
@@ -133,12 +134,14 @@ class PredictHandlerThread(QThread):
         # 传入的QT插件
         self.input_player = input_player
         self.output_player = output_player
+        self.output_mask_player = output_mask_player
         self.predict_info_plainTextEdit = predict_info_plain_text_edit
         self.predict_progressBar = predict_progress_bar
         self.fps_label = fps_label
         self.button_dict = button_dict
         self.input_tab = input_tab
         self.output_tab = output_tab
+        self.output_mask_tab = output_mask_tab
         self.input_image_label = input_image_label
         self.output_image_label = output_image_label
         self.output_mask_real_time_label = output_mask_real_time_label
@@ -173,6 +176,7 @@ class PredictHandlerThread(QThread):
             # tab 设置显示第二栏
             self.input_tab.setCurrentIndex(REAL_TIME_PREDICT_TAB_INDEX)
             self.output_tab.setCurrentIndex(REAL_TIME_PREDICT_TAB_INDEX)
+            self.output_mask_tab.setCurrentIndex(REAL_TIME_PREDICT_TAB_INDEX)
 
         # with torch.no_grad():
         self.output_predict_file = self.predict_model.detect(self.parameter_source,
@@ -188,9 +192,13 @@ class PredictHandlerThread(QThread):
             self.output_player.setMedia(QMediaContent(QUrl.fromLocalFile(self.output_predict_file)))  # 选取视频文件
             self.output_player.pause()  # 显示媒体
 
+            self.output_mask_player.setMedia(QMediaContent(QUrl.fromLocalFile(self.output_predict_file)))  # 选取视频文件
+            self.output_mask_player.pause()  # 显示媒体
+
             # tab 设置显示第一栏
             self.input_tab.setCurrentIndex(PREDICT_SHOW_TAB_INDEX)
             self.output_tab.setCurrentIndex(PREDICT_SHOW_TAB_INDEX)
+            self.output_mask_tab.setCurrentIndex(PREDICT_SHOW_TAB_INDEX)
 
             # video_flag = os.path.splitext(self.parameter_source)[-1].lower() in vid_formats
             for item, button in self.button_dict.items():
@@ -358,7 +366,7 @@ class SegmentationModel(object):
             img = cv2.addWeighted(img, 1, mask_final, 1, 0)  # 合并
 
             # 保存推理信息
-            image_shape = f'{img_original.shape[0]}x{img_original.shape[1]}'
+            image_shape = f'{img_original.shape[0]}x{img_original.shape[1]} '
             self.predict_info = info_str + '%sDone. (%.3fs)' % (image_shape, time_taken)
             print(self.predict_info)
             # QT 显示
@@ -465,6 +473,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                                            self.output_media_tabWidget,
                                                            self.input_real_time_label,
                                                            self.output_real_time_label,
+                                                           self.output_mask_player,
+                                                           self.output_mask_media_tabWidget,
                                                            self.output_mask_real_time_label,
                                                            real_time_show_predict_flag
                                                            )
@@ -588,8 +598,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.input_player.setMedia(QMediaContent(self.media_source))  # 选取视频文件
 
         # 设置 output 为一张图片，防止资源被占用
-        path_current = str(Path.cwd().joinpath("area_dangerous\1.jpg"))
+        path_current = str(Path.cwd().joinpath(r"./UI/icon/wait.png"))
         self.output_player.setMedia(QMediaContent(QUrl.fromLocalFile(path_current)))
+        self.output_player.pause()  # 显示媒体
 
         # 将 QUrl 路径转为 本地路径str
         self.predict_handler_thread.parameter_source = self.media_source.toLocalFile()
