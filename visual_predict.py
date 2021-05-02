@@ -319,7 +319,7 @@ class SegmentationModel(object):
         img_show = QPixmap(image)
         image_label.setPixmap(img_show)
 
-    def detect(self, source, save_img=False, qt_input=None, qt_output=None, qt_mask_output=None):
+    def detect(self, source, qt_input=None, qt_output=None, qt_mask_output=None):
         """
         args:
           test_loader: loaded for test dataset, for those that do not provide label on the test set
@@ -394,11 +394,11 @@ class SegmentationModel(object):
 
             if mode == 'images':
                 # 保存 推理+原图 结果
-                save_path = os.path.join(self.save_seg_dir, save_name + '_img.png')
+                save_path = os.path.join(self.save_seg_dir, save_name + '_img.jpg')
                 cv2.imwrite(f"{save_path}", img)
 
-                save_mask_path = os.path.join(self.save_seg_dir, save_name + '_mask_img.png')
-                cv2.imwrite(f"{save_mask_path}", img)
+                save_mask_path = os.path.join(self.save_seg_dir, save_name + '_mask_img.jpg')
+                cv2.imwrite(f"{save_mask_path}", mask_final)
             else:
                 # 保存视频
                 save_path = os.path.join(self.save_seg_dir, save_name + '_predict.mp4')
@@ -616,10 +616,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         self.media_source = QFileDialog.getOpenFileUrl()[0]
         self.input_player.setMedia(QMediaContent(self.media_source))  # 选取视频文件
+        self.input_player.pause()  # 显示媒体
 
         # 设置 output 为一张图片，防止资源被占用
         path_current = str(Path.cwd().joinpath(r"./UI/icon/wait.png"))
         self.output_player.setMedia(QMediaContent(QUrl.fromLocalFile(path_current)))
+        # self.output_player.setMedia(QMediaContent(self.media_source))  # 选取视频文件
         self.output_player.pause()  # 显示媒体
 
         self.output_mask_player.setMedia(QMediaContent(QUrl.fromLocalFile(path_current)))
@@ -627,7 +629,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # 将 QUrl 路径转为 本地路径str
         self.predict_handler_thread.parameter_source = self.media_source.toLocalFile()
-        self.input_player.pause()  # 显示媒体
 
         image_flag = os.path.splitext(self.predict_handler_thread.parameter_source)[-1].lower() in img_formats
         for item, button in self.button_dict.items():
