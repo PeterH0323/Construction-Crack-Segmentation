@@ -263,6 +263,7 @@ class SegmentationModel(object):
         self.classes = class_number  # 类别数量
 
         self.input_windows_width = 0
+        self.input_windows_height = 0
         self.output_windows_height = 0
 
         self.predict_info = ""  # 推理信息
@@ -310,10 +311,11 @@ class SegmentationModel(object):
             return
 
         if scale_type == "output":
-            if self.output_windows_height == 0:
-                self.output_windows_height = image_label.height()
-            resize_factor = self.output_windows_height / img.shape[0]
+            resize_factor = self.input_windows_height / 2 / img.shape[0]
         else:
+            if self.input_windows_height == 0:
+                self.input_windows_height = image_label.height()
+
             if self.input_windows_width == 0:
                 self.input_windows_width = image_label.width()
             resize_factor = self.input_windows_width / img.shape[1]
@@ -358,6 +360,7 @@ class SegmentationModel(object):
         vid_mask_path = None
 
         self.input_windows_width = 0
+        self.input_windows_height = 0
         self.output_windows_height = 0
 
         for i, (input, size, name, mode, frame_count, img_original, vid_cap, info_str) in enumerate(dataset_loader):
