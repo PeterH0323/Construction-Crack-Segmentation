@@ -181,9 +181,9 @@ class PredictHandlerThread(QThread):
 
         with torch.no_grad():
             self.output_predict_file, self.output_predict_mask_file = self.predict_model.detect(self.parameter_source,
-                                                                                           qt_input=qt_input,
-                                                                                           qt_output=qt_output,
-                                                                                           qt_mask_output=mask_qt_output)
+                                                                                                qt_input=qt_input,
+                                                                                                qt_output=qt_output,
+                                                                                                qt_mask_output=mask_qt_output)
 
         if self.output_predict_file != "" and self.output_predict_mask_file != "":
             # 将 str 路径转为 QUrl 并显示
@@ -262,6 +262,8 @@ class SegmentationModel(object):
         self.gpu_number = gpu_number  # 使用的 GPU
         self.classes = class_number  # 类别数量
 
+        self.windows_height = 0
+
         self.predict_info = ""  # 推理信息
 
         self.load_model()
@@ -295,10 +297,10 @@ class SegmentationModel(object):
         if not os.path.exists(self.save_seg_dir):
             os.makedirs(self.save_seg_dir)
 
-    @staticmethod
-    def show_real_time_image(image_label, img):
+    def show_real_time_image(self, scale_type, image_label, img):
         """
         image_label 显示实时推理图片
+        :param scale_type: 进行缩放的方向
         :param image_label: 本次需要显示的 label 句柄
         :param img: cv2 图片
         :return:
@@ -306,17 +308,33 @@ class SegmentationModel(object):
         if image_label is None:
             return
 
-        image_label_width = image_label.width()
-        resize_factor = image_label_width / img.shape[1]
+        if self.windows_height == 0:
+            self.windows_height = image_label.height()
+
+        # if scale_type == "W":
+        #     resize_factor = image_label.width() / img.shape[1]
+        # else:
+        #     resize_factor = image_label.height() / img.shape[0]
+        # resize_factor = image_label.width() / img.shape[1]
+        # resize_factor = image_label.height() / img.shape[0]
+        resize_factor = self.windows_height / img.shape[0]
+
+        # if img.shape[0] * resize_factor > self.windows_height:
+        #     resize_factor = image_label.height() / img.shape[0]
+
+        # if img.shape[1] * resize_factor > image_label.width():
+        #     resize_factor = 0.99
 
         img = cv2.resize(img, (int(img.shape[1] * resize_factor), int(img.shape[0] * resize_factor)),
                          interpolation=cv2.INTER_CUBIC)
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # OpenCV 读取的bgr格式图片转换成rgb格式
+
         image = QImage(img_rgb[:],
                        img_rgb.shape[1],
                        img_rgb.shape[0],
                        img_rgb.shape[1] * 3,
                        QImage.Format_RGB888)
+
         img_show = QPixmap(image)
         image_label.setPixmap(img_show)
 
@@ -389,9 +407,9 @@ class SegmentationModel(object):
 
                 if show_flag:
                     # 推理前的图片 origin_image, 推理后的图片 im0
-                    self.show_real_time_image(qt_input, img_original)  # 原图
-                    self.show_real_time_image(qt_output, img)  # 最终推理图
-                    self.show_real_time_image(qt_mask_output, mask_final)  # 分割 mask 图
+                    self.show_real_time_image("H", qt_output, img)  # 最终推理图
+                    self.show_real_time_image("H", qt_mask_output, mask_final)  # 分割 mask 图
+                    self.show_real_time_image("W", qt_input, img_original)  # 原图
 
             if mode == 'images':
                 # 保存 推理+原图 结果
@@ -539,6 +557,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # 设置显示图片的 label 为黑色背景
         self.input_real_time_label.setStyleSheet("QLabel{background:black}")
         self.output_real_time_label.setStyleSheet("QLabel{background:black}")
+        self.output_mask_real_time_label.setStyleSheet("QLabel{background:black}")
+
+        # self.input_real_time_label.setFixedSize(self.input_media_tabWidget.width(), self.input_media_tabWidget.height())
 
     def real_time_checkbox_state_changed(self):
         """

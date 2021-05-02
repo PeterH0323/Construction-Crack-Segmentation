@@ -604,7 +604,7 @@ QPlainTextEdit {
         <item>
          <widget class="QTabWidget" name="output_mask_media_tabWidget">
           <property name="currentIndex">
-           <number>1</number>
+           <number>0</number>
           </property>
           <widget class="QWidget" name="tab_13">
            <attribute name="title">
