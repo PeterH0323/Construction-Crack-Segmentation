@@ -322,7 +322,7 @@ class SegmentationModel(object):
                          interpolation=cv2.INTER_CUBIC)
 
         if scale_type == "output":
-            # 使用黑框填充，确保图片显示在正中
+            # 使用黑框填充，确保图片显示在框的正中央
             border_with = (image_label.width() - img.shape[1]) // 2
             img = cv2.copyMakeBorder(img, 0, 0, border_with, border_with, cv2.BORDER_CONSTANT)
 
