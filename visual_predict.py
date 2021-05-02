@@ -129,6 +129,7 @@ class PredictHandlerThread(QThread):
         self.predict_model = SegmentationModel(net_type, weight_path, out_file_path,
                                                dataset_type="custom_dataset", gpu_number="0", class_number=2)
         self.output_predict_file = ""
+        self.output_predict_mask_file = ""
         self.parameter_source = ''
 
         # 传入的QT插件
@@ -179,12 +180,12 @@ class PredictHandlerThread(QThread):
             self.output_mask_tab.setCurrentIndex(REAL_TIME_PREDICT_TAB_INDEX)
 
         # with torch.no_grad():
-        self.output_predict_file = self.predict_model.detect(self.parameter_source,
-                                                             qt_input=qt_input,
-                                                             qt_output=qt_output,
-                                                             qt_mask_output=mask_qt_output)
+        self.output_predict_file, self.output_predict_mask_file = self.predict_model.detect(self.parameter_source,
+                                                                                       qt_input=qt_input,
+                                                                                       qt_output=qt_output,
+                                                                                       qt_mask_output=mask_qt_output)
 
-        if self.output_predict_file != "":
+        if self.output_predict_file != "" and self.output_predict_mask_file != "":
             # 将 str 路径转为 QUrl 并显示
             self.input_player.setMedia(QMediaContent(QUrl.fromLocalFile(self.parameter_source)))  # 选取视频文件
             self.input_player.pause()  # 显示媒体
@@ -192,7 +193,7 @@ class PredictHandlerThread(QThread):
             self.output_player.setMedia(QMediaContent(QUrl.fromLocalFile(self.output_predict_file)))  # 选取视频文件
             self.output_player.pause()  # 显示媒体
 
-            self.output_mask_player.setMedia(QMediaContent(QUrl.fromLocalFile(self.output_predict_file)))  # 选取视频文件
+            self.output_mask_player.setMedia(QMediaContent(QUrl.fromLocalFile(self.output_predict_mask_file)))  # 选取视频文件
             self.output_mask_player.pause()  # 显示媒体
 
             # tab 设置显示第一栏
@@ -336,6 +337,8 @@ class SegmentationModel(object):
         total_batches = len(dataset_loader)
         vid_writer = None
         vid_path = None
+        vid_mask_writer = None
+        vid_mask_path = None
 
         for i, (input, size, name, mode, frame_count, img_original, vid_cap, info_str) in enumerate(dataset_loader):
             with torch.no_grad():
@@ -355,7 +358,7 @@ class SegmentationModel(object):
             if mode == 'images':
                 # 保存图片推理结果
                 save_predict(output, None, save_name, self.dataset_type, self.save_seg_dir,
-                             output_grey=True, output_color=True, gt_color=False)
+                             output_grey=True, output_color=False, gt_color=False)
 
             # 将结果和原图画到一起
             img = img_original
@@ -393,6 +396,9 @@ class SegmentationModel(object):
                 # 保存 推理+原图 结果
                 save_path = os.path.join(self.save_seg_dir, save_name + '_img.png')
                 cv2.imwrite(f"{save_path}", img)
+
+                save_mask_path = os.path.join(self.save_seg_dir, save_name + '_mask_img.png')
+                cv2.imwrite(f"{save_mask_path}", img)
             else:
                 # 保存视频
                 save_path = os.path.join(self.save_seg_dir, save_name + '_predict.mp4')
@@ -408,7 +414,21 @@ class SegmentationModel(object):
                     vid_writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*fourcc), fps, (w, h))
                 vid_writer.write(img)
 
-        return save_path
+                # 保存 mask 视频
+                save_mask_path = os.path.join(self.save_seg_dir, save_name + '_mask_predict.mp4')
+                if vid_mask_path != save_mask_path:  # new video
+                    vid_mask_path = save_mask_path
+                    if isinstance(vid_mask_writer, cv2.VideoWriter):
+                        vid_mask_writer.release()  # release previous video writer
+
+                    fourcc = 'mp4v'  # output video codec
+                    fps = vid_cap.get(cv2.CAP_PROP_FPS)
+                    w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                    h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                    vid_mask_writer = cv2.VideoWriter(save_mask_path, cv2.VideoWriter_fourcc(*fourcc), fps, (w, h))
+                vid_mask_writer.write(mask_final)
+
+        return save_path, save_mask_path
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
@@ -602,6 +622,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.output_player.setMedia(QMediaContent(QUrl.fromLocalFile(path_current)))
         self.output_player.pause()  # 显示媒体
 
+        self.output_mask_player.setMedia(QMediaContent(QUrl.fromLocalFile(path_current)))
+        self.output_mask_player.pause()  # 显示媒体
+
         # 将 QUrl 路径转为 本地路径str
         self.predict_handler_thread.parameter_source = self.media_source.toLocalFile()
         self.input_player.pause()  # 显示媒体
@@ -647,10 +670,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             print("play")
             self.input_player.play()
             self.output_player.play()
+            self.output_mask_player.play()
 
         elif name == "pause_pushButton":
             self.input_player.pause()
             self.output_player.pause()
+            self.output_mask_player.pause()
 
     @pyqtSlot()
     def open_file_in_browser(self):
