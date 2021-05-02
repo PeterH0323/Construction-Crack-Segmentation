@@ -1,18 +1,13 @@
 # This project for Construction-Crack-Segmentation
 
-项目原始地址：https://github.com/xiaoyufenfei/Efficient-Segmentation-Networks 
-
-
-
 ## 一、环境配置
 
 ```bash
 # python3
 conda create --name=Construction-Crack-Segmentation python=3.7
 conda activate Construction-Crack-Segmentation
-pip install -r requirement.txt
+pip install -r requirements.txt
 ```
-
 
 
 ##  二、生成训练集、验证集、测试集
@@ -45,3 +40,6 @@ python test.py --checkpoint 权重路径
 ```
 python predict.py
 ```
+
+## 六、参考
+[1] https://github.com/xiaoyufenfei/Efficient-Segmentation-Networks
