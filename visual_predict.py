@@ -190,6 +190,7 @@ class PredictHandlerThread(QThread):
             self.input_player.setMedia(QMediaContent(QUrl.fromLocalFile(self.parameter_source)))  # 选取视频文件
             self.input_player.pause()  # 显示媒体
 
+            # 注意 PNG 不能使用 setMedia 显示！！！！
             self.output_player.setMedia(QMediaContent(QUrl.fromLocalFile(self.output_predict_file)))  # 选取视频文件
             self.output_player.pause()  # 显示媒体
 
