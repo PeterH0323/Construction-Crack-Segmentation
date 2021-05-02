@@ -179,11 +179,11 @@ class PredictHandlerThread(QThread):
             self.output_tab.setCurrentIndex(REAL_TIME_PREDICT_TAB_INDEX)
             self.output_mask_tab.setCurrentIndex(REAL_TIME_PREDICT_TAB_INDEX)
 
-        # with torch.no_grad():
-        self.output_predict_file, self.output_predict_mask_file = self.predict_model.detect(self.parameter_source,
-                                                                                       qt_input=qt_input,
-                                                                                       qt_output=qt_output,
-                                                                                       qt_mask_output=mask_qt_output)
+        with torch.no_grad():
+            self.output_predict_file, self.output_predict_mask_file = self.predict_model.detect(self.parameter_source,
+                                                                                           qt_input=qt_input,
+                                                                                           qt_output=qt_output,
+                                                                                           qt_mask_output=mask_qt_output)
 
         if self.output_predict_file != "" and self.output_predict_mask_file != "":
             # 将 str 路径转为 QUrl 并显示
