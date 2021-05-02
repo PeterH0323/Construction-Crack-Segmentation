@@ -310,6 +310,7 @@ class SegmentationModel(object):
         if image_label is None:
             return
 
+        input_using_height = False
         if scale_type == "output":
             resize_factor = self.input_windows_height / 2 / img.shape[0]
         else:
@@ -319,11 +320,14 @@ class SegmentationModel(object):
             if self.input_windows_width == 0:
                 self.input_windows_width = image_label.width()
             resize_factor = self.input_windows_width / img.shape[1]
+            if img.shape[0] * resize_factor > image_label.height():
+                resize_factor = self.input_windows_height / img.shape[0]
+                input_using_height = True
 
         img = cv2.resize(img, (int(img.shape[1] * resize_factor), int(img.shape[0] * resize_factor)),
                          interpolation=cv2.INTER_CUBIC)
 
-        if scale_type == "output":
+        if scale_type == "output" or input_using_height:
             # 使用黑框填充，确保图片显示在框的正中央
             border_with = (image_label.width() - img.shape[1]) // 2
             img = cv2.copyMakeBorder(img, 0, 0, border_with, border_with, cv2.BORDER_CONSTANT)
