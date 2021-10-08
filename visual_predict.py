@@ -341,6 +341,7 @@ class SegmentationModel(object):
 
         img_show = QPixmap(image)
         image_label.setPixmap(img_show)
+        image_label.setAlignment(Qt.AlignHCenter)  # 设置图片居中
 
     def detect(self, source, qt_input=None, qt_output=None, qt_mask_output=None):
         """
